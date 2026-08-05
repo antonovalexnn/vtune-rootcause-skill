@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "vtune-rootcause-skill",
+  "description": "Intel VTune root-cause tooling: the /rootcause investigator and its jira / confluence / test-history / artifactory helper skills.",
+  "owner": {
+    "name": "Alexander Antonov"
+  },
+  "plugins": [
+    {
+      "name": "vtune-rootcause",
+      "source": "./plugins/vtune-rootcause",
+      "description": "Autonomous VTune (VASP) Jira root-cause investigator bundled with the jira, confluence, test-history and vtune-artifactory-build skills it calls."
+    }
+  ]
+}
