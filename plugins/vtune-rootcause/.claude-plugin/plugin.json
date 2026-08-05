@@ -1,7 +1,7 @@
 {
   "name": "vtune-rootcause",
   "version": "1.0.0",
-  "description": "Autonomously root-cause Intel VTune (VASP) Jira tickets, plus the jira / confluence / test-history / vtune-artifactory-build helpers it drives.",
+  "description": "Intel VTune (VASP) engineering skills: autonomous /rootcause investigator and /implement-feature builder, plus the jira / confluence / test-history / vtune-artifactory-build helpers they drive.",
   "author": {
     "name": "Alexander Antonov"
   }

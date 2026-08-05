@@ -1,18 +1,20 @@
 # vtune-rootcause-skill
 
-A Claude Code **plugin** that packages the `/rootcause` skill — an autonomous
-Intel VTune (VASP) Jira root-cause investigator — together with the four helper
-skills it drives:
+A Claude Code **plugin** that packages the `/rootcause` and `/implement-feature`
+skills — autonomous Intel VTune (VASP) engineering agents — together with the
+four helper skills they drive:
 
 | Skill | What it does |
 |-------|--------------|
 | **`rootcause`** | Given a Jira ticket key, reads the ticket + comments + attachments, downloads everything into a per-ticket artifact folder, runs a multi-agent workflow to map the failure to a `vcs/<comp>` component and form a root-cause hypothesis, then optionally builds/tests, fixes, and opens a Copilot-reviewed draft PR — all within a staged permission model. |
+| **`implement-feature`** | Given a Jira ticket key **or** a free-text description, designs a feature against the `vcs/` components via a multi-agent workflow, stops for plan approval, then implements it, adds tests, and — confirm-first — opens a Copilot-reviewed draft PR. |
 | **`jira`** | Read / search / download / (confirm-first) comment on on-prem Jira (`jira.devtools.intel.com`). |
 | **`confluence`** | Read on-prem Confluence (`wiki.ith.intel.com`) pages, attachments, and links (read-only). |
 | **`test-history`** | Look up a VTune/Analyzers test's run history (date / OS / platform / pass-fail / build / matched Jira) from the Triage Service report. |
 | **`vtune-artifactory-build`** | Download a VTune daily build from Artifactory by build number, locally or onto a remote box. |
 
-All five ship in **one** plugin so `rootcause` can call the others by a portable
+All six ship in **one** plugin so `rootcause` and `implement-feature` can call the
+helpers by a portable
 `${CLAUDE_PLUGIN_ROOT}` path — no username-specific paths, no symlinks, no
 `settings.json` edits.
 
@@ -39,6 +41,7 @@ repo-aware git/build commands run), then:
 
 ```
 /rootcause VASP-XXXXX
+/implement-feature VASP-XXXXX        # or: /implement-feature "add JSON export to the reporter"
 ```
 
 The helper skills also work standalone, e.g. `/jira view VASP-XXXXX`,
@@ -97,10 +100,11 @@ Jira → analysis → report core works without them. Adjust for your box if nee
 plugins/vtune-rootcause/
 ├── .claude-plugin/plugin.json            # the plugin manifest
 └── skills/
-    ├── rootcause/     SKILL.md + rc_bootstrap.py, rc_bt.py, rc_pr_review.py
-    ├── jira/          SKILL.md + jira.py
-    ├── confluence/    SKILL.md + confluence.py
-    ├── test-history/  SKILL.md + test_history.py
+    ├── rootcause/          SKILL.md + rc_bootstrap.py, rc_bt.py, rc_pr_review.py
+    ├── implement-feature/  SKILL.md + if_bootstrap.py, if_pr_review.py
+    ├── jira/               SKILL.md + jira.py
+    ├── confluence/         SKILL.md + confluence.py
+    ├── test-history/       SKILL.md + test_history.py
     └── vtune-artifactory-build/  SKILL.md + vab_fetch.py
 ```
 
