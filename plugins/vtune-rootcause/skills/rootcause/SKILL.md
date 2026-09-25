@@ -18,6 +18,8 @@ allowed-tools:
   - Edit
   - Write
   - Workflow
+  - Skill(caveman)
+  - Skill(caveman:*)
   - Bash(python "${CLAUDE_PLUGIN_ROOT}/skills/jira/jira.py" view *)
   - Bash(python "${CLAUDE_PLUGIN_ROOT}/skills/jira/jira.py" comments *)
   - Bash(python "${CLAUDE_PLUGIN_ROOT}/skills/jira/jira.py" attachments *)
@@ -85,6 +87,31 @@ mid-run `AskUserQuestion` — you are not blocking on an interactive prompt, you
 have simply finished the autonomous work you were permitted to do and handed
 control back. Do not use `AskUserQuestion` for it (still disabled); just stop
 and wait for the user's next message.
+
+## Communication style
+
+Chat narration during this run — interim phase updates, the Phase C
+**closing report**, and the prose framing the Phase D assessment table —
+defaults to **caveman-lite**: drop filler, hedging, and pleasantries; keep
+articles and full grammatical sentences; stay professional. Compress
+phrasing, never content — every mandated item (each closing-report bullet,
+the Phase D gate statement, a hard-failure stop) still appears, stated
+plainly enough not to be misread. This never reaches anything persisted —
+`NOTES.md`, `ROOTCAUSE.md`, `pr_review/ASSESSMENT.md` (the Phase D table
+included, since it is saved verbatim), PR titles/bodies, Jira comments —
+those stay full professional prose per their own conventions below.
+
+**Prefer the real skill.** Before Phase A step 1, if `caveman` is listed
+among this session's available skills, silently call `Skill(skill:
+"caveman", args: "lite")` — no announcement, per its own no-self-reference
+rule — then follow its loaded rules (the six levels, the persisted-text
+exemption, Auto-Clarity) for the rest of the run instead of the default
+above. Absent caveman, keep the default as-is; its absence is not a failure.
+
+**The user's word overrides and never snaps back.** Strengthen with
+`/caveman full|ultra|wenyan-*` or plain language ("be more terse"); turn off
+with `/caveman off`, "stop caveman", or "normal mode" — honor the same
+phrases against the default when caveman isn't installed.
 
 ## Input
 
