@@ -13,7 +13,7 @@ Usage:
   jira.py view        KEY [--json]
   jira.py comments    KEY [--limit N] [--json]
   jira.py comment     KEY (-m TEXT | -f FILE | --stdin) [--dry-run]
-  jira.py transition  KEY [--to STATUS|--id N] [--dry-run]     # change status (write!)
+  jira.py transition  KEY [--to STATUS|--id N] [--resolution NAME] [--dry-run]  # change status (write!)
   jira.py assign      KEY [--to USER|--search [NAME]] [--dry-run]  # set assignee (write!)
   jira.py sprint      KEY [--to NAME|--id N|--list] [--board N] [--state S] [--dry-run]
   jira.py attachments KEY [--json]
@@ -231,18 +231,20 @@ def cmd_comment(args):
 
 def cmd_transition(args):
     """Move an issue to another workflow status (write!)."""
-    data = _api("GET", "/issue/{0}/transitions".format(args.key))
+    data = _api("GET", "/issue/{0}/transitions?expand=transitions.fields".format(args.key))
     transitions = data.get("transitions") or []
     if args.list or (not args.to and not args.id):
         print("# Available transitions for {0}".format(args.key))
         if not transitions:
             print("\n_(none -- you may lack permission or the issue is in a terminal state)_")
             return
-        print("\n| id | transition | -> status |")
-        print("|----|------------|-----------|")
+        print("\n| id | transition | -> status | required fields |")
+        print("|----|------------|-----------|------------------|")
         for t in transitions:
-            print("| {0} | {1} | {2} |".format(
-                t.get("id"), t.get("name"), _name(t.get("to"))))
+            fields = t.get("fields") or {}
+            req = ", ".join(fname for fname, fdef in fields.items() if fdef.get("required")) or "-"
+            print("| {0} | {1} | {2} | {3} |".format(
+                t.get("id"), t.get("name"), _name(t.get("to")), req))
         if not args.to and not args.id:
             return
     # Resolve the requested transition by explicit id or by target-status name.
@@ -267,14 +269,53 @@ def cmd_transition(args):
         chosen = matches[0]
     payload = {"transition": {"id": str(chosen.get("id"))}}
     target = _name(chosen.get("to"))
+    fields_meta = chosen.get("fields") or {}
+    fields_payload = {}
+    res_meta = fields_meta.get("resolution")
+    if res_meta:
+        allowed_values = res_meta.get("allowedValues") or []
+        if not args.resolution:
+            if res_meta.get("required"):
+                allowed = ", ".join(v.get("name") for v in allowed_values) or "(unknown)"
+                sys.exit("ERROR: transition '{0}' requires --resolution. Allowed values: {1}".format(
+                    chosen.get("name"), allowed))
+        else:
+            want_res = args.resolution.strip().lower()
+            res_match = next((v for v in allowed_values if (v.get("name") or "").lower() == want_res), None)
+            if not res_match:
+                allowed = ", ".join(v.get("name") for v in allowed_values) or "(unknown)"
+                sys.exit("ERROR: resolution {0!r} not valid for transition '{1}'. Allowed: {2}".format(
+                    args.resolution, chosen.get("name"), allowed))
+            fields_payload["resolution"] = {"name": res_match.get("name")}
+    elif args.resolution:
+        sys.exit("ERROR: transition '{0}' does not accept a resolution.".format(chosen.get("name")))
+    # Fail loudly on any other required field this tool doesn't know how to fill,
+    # rather than letting the API return a cryptic 400.
+    unhandled_required = [fname for fname, fdef in fields_meta.items()
+                           if fdef.get("required") and fname not in fields_payload]
+    if unhandled_required:
+        sys.exit("ERROR: transition '{0}' also requires field(s) {1} which this tool cannot set. "
+                 "Use the Jira web UI for this transition.".format(
+                     chosen.get("name"), ", ".join(unhandled_required)))
+    if fields_payload:
+        payload["fields"] = fields_payload
+    if args.comment:
+        payload["update"] = {"comment": [{"add": {"body": args.comment}}]}
     if args.dry_run:
         print("DRY RUN — would POST to /issue/{0}/transitions ({1} -> {2}):".format(
             args.key, chosen.get("name"), target))
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
-    _api("POST", "/issue/{0}/transitions".format(args.key), body=payload)
-    print("Transitioned {0} -> {1} (via '{2}', id {3})".format(
-        args.key, target, chosen.get("name"), chosen.get("id")))
+    try:
+        _api("POST", "/issue/{0}/transitions".format(args.key), body=payload)
+    except SystemExit as e:
+        if "Comment" in str(e) and "required" in str(e) and not args.comment:
+            sys.exit("{0}\nHint: this transition's workflow requires a comment (not shown in "
+                     "--list metadata). Re-run with --comment TEXT.".format(e))
+        raise
+    suffix = " with resolution={0}".format(fields_payload["resolution"]["name"]) if "resolution" in fields_payload else ""
+    print("Transitioned {0} -> {1} (via '{2}', id {3}){4}".format(
+        args.key, target, chosen.get("name"), chosen.get("id"), suffix))
 
 
 def _assignable(key, query):
@@ -510,6 +551,8 @@ def build_parser():
     g.add_argument("--to", help="target status or transition name (substring, case-insensitive)")
     g.add_argument("--id", help="explicit transition id (from --list)")
     sp.add_argument("--list", action="store_true", help="list available transitions and exit")
+    sp.add_argument("--resolution", help="resolution name, if the transition requires one (e.g. \"Won't Fix\")")
+    sp.add_argument("--comment", help="comment to add with the transition, if its workflow requires one")
     sp.add_argument("--dry-run", action="store_true", help="print payload, change nothing")
     sp.set_defaults(func=cmd_transition)
 
